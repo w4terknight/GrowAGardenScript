@@ -35,7 +35,7 @@ screenGui.Name = "PetRandomizerUI"
 
 local mainFrame = Instance.new("Frame", screenGui)
 mainFrame.Position = UDim2.new(0.02, 0, 0.2, 0)
-mainFrame.Size = UDim2.new(0, 250, 0, 170)
+mainFrame.Size = UDim2.new(0, 250, 0, 200)
 mainFrame.BackgroundColor3 = Color3.fromRGB(66, 44, 25)
 mainFrame.BorderSizePixel = 0
 mainFrame.BackgroundTransparency = 0.05
@@ -48,6 +48,16 @@ title.TextColor3 = Color3.new(1,1,1)
 title.BackgroundTransparency = 1
 title.TextScaled = true
 title.Font = Enum.Font.SourceSansBold
+
+--// Output Label
+local outputLabel = Instance.new("TextLabel", mainFrame)
+outputLabel.Size = UDim2.new(1, -10, 0, 35)
+outputLabel.Position = UDim2.new(0, 5, 0, 160)
+outputLabel.BackgroundTransparency = 1
+outputLabel.TextColor3 = Color3.new(1, 1, 0)
+outputLabel.TextScaled = true
+outputLabel.Font = Enum.Font.SourceSansBold
+outputLabel.Text = ""
 
 --// Create Button Helper
 local function createButton(name, text, color, posY)
@@ -72,7 +82,7 @@ local function randomizePet()
 	local selectedEgg = eggNames[math.random(1, #eggNames)]
 	local petList = petTable[selectedEgg]
 	local chosenPet = petList[math.random(1, #petList)]
-	warn("[Randomizer] Hatched from " .. selectedEgg .. ": " .. chosenPet)
+	outputLabel.Text = "You got [" .. chosenPet .. "] from " .. selectedEgg
 end
 
 --// ESP Function
@@ -81,32 +91,34 @@ local function toggleESP()
 	espEnabled = not espEnabled
 	espBtn.Text = "ESP: " .. (espEnabled and "ON" or "OFF")
 
-	for _, egg in ipairs(Workspace:GetDescendants()) do
-		if egg:IsA("Part") then
+	for _, obj in ipairs(Workspace:GetDescendants()) do
+		if obj:IsA("Model") or obj:IsA("BasePart") then
+			local objName = string.lower(obj.Name)
 			for eggType, pets in pairs(petTable) do
-				if egg.Name == eggType then
-					if espEnabled then
-						if not egg:FindFirstChild("EggESP") then
-							local billboard = Instance.new("BillboardGui")
-							billboard.Name = "EggESP"
-							billboard.Size = UDim2.new(0, 100, 0, 40)
-							billboard.StudsOffset = Vector3.new(0, 3, 0)
-							billboard.AlwaysOnTop = true
-							billboard.Adornee = egg
-							billboard.Parent = egg
+				if string.find(objName, string.lower(eggType)) then
+					local attachTo = obj:IsA("Model") and obj:FindFirstChildWhichIsA("BasePart") or obj
+					if attachTo then
+						if espEnabled then
+							if not attachTo:FindFirstChild("EggESP") then
+								local billboard = Instance.new("BillboardGui", attachTo)
+								billboard.Name = "EggESP"
+								billboard.Size = UDim2.new(0, 150, 0, 50)
+								billboard.StudsOffset = Vector3.new(0, 3, 0)
+								billboard.AlwaysOnTop = true
 
-							local label = Instance.new("TextLabel")
-							label.Size = UDim2.new(1, 0, 1, 0)
-							label.BackgroundTransparency = 1
-							label.TextColor3 = Color3.new(1, 1, 0)
-							label.TextScaled = true
-							label.Font = Enum.Font.GothamBold
-							label.Text = pets[math.random(1, #pets)]
-							label.Parent = billboard
-						end
-					else
-						if egg:FindFirstChild("EggESP") then
-							egg:FindFirstChild("EggESP"):Destroy()
+								local label = Instance.new("TextLabel", billboard)
+								label.Size = UDim2.new(1, 0, 1, 0)
+								label.BackgroundTransparency = 1
+								label.TextColor3 = Color3.fromRGB(255, 255, 0)
+								label.TextScaled = true
+								label.Font = Enum.Font.GothamBold
+
+								local randomPet = pets[math.random(1, #pets)]
+								label.Text = "[" .. randomPet .. "]"
+							end
+						else
+							local gui = attachTo:FindFirstChild("EggESP")
+							if gui then gui:Destroy() end
 						end
 					end
 				end
@@ -115,21 +127,22 @@ local function toggleESP()
 	end
 end
 
---// Auto Hatch Functionality
+--// Auto Hatch (Visual)
 local autoEnabled = false
+local lastAutoTime = 0
 local function toggleAuto()
 	autoEnabled = not autoEnabled
 	autoBtn.Text = "Auto: " .. (autoEnabled and "ON" or "OFF")
 end
 
-RunService.RenderStepped:Connect(function()
-	if autoEnabled then
+RunService.RenderStepped:Connect(function(dt)
+	if autoEnabled and tick() - lastAutoTime >= 1.5 then
 		randomizePet()
-		task.wait(1.5)
+		lastAutoTime = tick()
 	end
 end)
 
---// Button Click Events
+--// Button Events
 randomizeBtn.MouseButton1Click:Connect(randomizePet)
 espBtn.MouseButton1Click:Connect(toggleESP)
 autoBtn.MouseButton1Click:Connect(toggleAuto)
